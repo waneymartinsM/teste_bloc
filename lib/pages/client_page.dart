@@ -1,6 +1,7 @@
 import 'dart:math';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:teste/blocs/client_bloc.dart';
 import 'package:teste/blocs/client_events.dart';
 import 'package:teste/blocs/client_state.dart';
@@ -20,12 +21,12 @@ class _ClientPageState extends State<ClientPage> {
   void initState() {
     super.initState();
     bloc = ClientBloc();
-    bloc.inputClient.add(LoadClientEvent());
+    bloc.add(LoadClientEvent());
   }
 
   @override
   void dispose() {
-    bloc.inputClient.close();
+    bloc.close();
     super.dispose();
   }
 
@@ -42,37 +43,43 @@ class _ClientPageState extends State<ClientPage> {
         actions: [
           IconButton(
               onPressed: () {
-                bloc.inputClient
-                    .add(AddClientEvent(client: Client(name: randomName())));
+                bloc.add(AddClientEvent(client: Client(name: randomName())));
               },
               icon: const Icon(Icons.person_add_sharp))
         ],
       ),
       body: Padding(
         padding: const EdgeInsets.symmetric(vertical: 24),
-        child: StreamBuilder<ClientState>(
-            stream: bloc.stream,
-            builder: (context, AsyncSnapshot<ClientState> snapshot) {
-              final clientsList = snapshot.data?.clients ?? [];
-              return ListView.separated(
-                itemBuilder: (context, index) {
-                  return ListTile(
-                    leading: CircleAvatar(
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(50),
-                        child: Text(clientsList[index].name.substring(0, 1)),
+        child: BlocBuilder<ClientBloc, ClientState>(
+            bloc: bloc,
+            builder: (context, state) {
+              if (state is ClientInitialState) {
+                return const Center(child: CircularProgressIndicator());
+              } else if (state is ClientSuccessState) {
+                final clientsList = state.clients;
+                return ListView.separated(
+                  itemBuilder: (context, index) {
+                    return ListTile(
+                      leading: CircleAvatar(
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(50),
+                          child: Text(clientsList[index].name.substring(0, 1)),
+                        ),
                       ),
-                    ),
-                    title: Text(clientsList[index].name),
-                    trailing: IconButton(
-                        onPressed: () {
-                          bloc.inputClient.add(RemoveClientEvent(client: clientsList[index]));
-                        }, icon: const Icon(Icons.remove)),
-                  );
-                },
-                separatorBuilder: (_, __) => const Divider(),
-                itemCount: clientsList.length,
-              );
+                      title: Text(clientsList[index].name),
+                      trailing: IconButton(
+                          onPressed: () {
+                            bloc.add(
+                                RemoveClientEvent(client: clientsList[index]));
+                          },
+                          icon: const Icon(Icons.remove)),
+                    );
+                  },
+                  separatorBuilder: (_, __) => const Divider(),
+                  itemCount: clientsList.length,
+                );
+              }
+              return Container();
             }),
       ),
     );
